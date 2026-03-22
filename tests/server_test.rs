@@ -7,7 +7,7 @@ use tower::ServiceExt;
 
 use wsl_relay::config::AppConfig;
 use wsl_relay::notify::{NotificationBackend, NotifyRequest, StubNotifier};
-use wsl_relay::server::{build_router, AppState};
+use wsl_relay::server::{AppState, build_router};
 
 fn test_state() -> AppState {
     AppState {
@@ -214,5 +214,10 @@ async fn notify_returns_500_when_notifier_fails() {
 
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(json["error"].as_str().unwrap().contains("notification delivery failed"));
+    assert!(
+        json["error"]
+            .as_str()
+            .unwrap()
+            .contains("notification delivery failed")
+    );
 }

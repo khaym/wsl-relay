@@ -48,9 +48,9 @@ pub struct WindowsNotifier;
 #[cfg(target_os = "windows")]
 impl NotificationBackend for WindowsNotifier {
     fn notify(&self, req: &NotifyRequest) -> anyhow::Result<()> {
-        use windows::core::HSTRING;
         use windows::Data::Xml::Dom::XmlDocument;
         use windows::UI::Notifications::{ToastNotification, ToastNotificationManager};
+        use windows::core::HSTRING;
 
         let title = escape_xml(&req.title);
         let body = escape_xml(&req.body);

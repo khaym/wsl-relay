@@ -1,4 +1,4 @@
-use wsl_relay::notify::{escape_xml, NotificationBackend, NotifyIcon, NotifyRequest, StubNotifier};
+use wsl_relay::notify::{NotificationBackend, NotifyIcon, NotifyRequest, StubNotifier, escape_xml};
 
 #[test]
 fn stub_notifier_returns_ok() {
@@ -64,8 +64,10 @@ fn deserialize_missing_body_fails() {
 
 #[test]
 fn escape_xml_special_characters() {
-    assert_eq!(escape_xml("<script>alert('xss')</script>"),
-        "&lt;script&gt;alert(&apos;xss&apos;)&lt;/script&gt;");
+    assert_eq!(
+        escape_xml("<script>alert('xss')</script>"),
+        "&lt;script&gt;alert(&apos;xss&apos;)&lt;/script&gt;"
+    );
     assert_eq!(escape_xml("a & b"), "a &amp; b");
     assert_eq!(escape_xml(r#"say "hello""#), "say &quot;hello&quot;");
 }

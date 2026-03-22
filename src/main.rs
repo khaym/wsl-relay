@@ -4,7 +4,7 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 use wsl_relay::config::AppConfig;
-use wsl_relay::server::{build_router, AppState};
+use wsl_relay::server::{AppState, build_router};
 
 fn load_config() -> AppConfig {
     let path = std::env::var("WSL_RELAY_CONFIG").ok();
