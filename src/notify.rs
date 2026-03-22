@@ -71,10 +71,9 @@ impl NotificationBackend for WindowsNotifier {
         let toast = ToastNotification::CreateToastNotification(&xml)?;
         // Use PowerShell's registered App ID as a workaround.
         // This AUMID is consistent across all Windows 10/11 installations.
-        let app_id = "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\
-                       \\WindowsPowerShell\\v1.0\\powershell.exe";
-        let notifier =
-            ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(app_id))?;
+        let app_id =
+            "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe";
+        let notifier = ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(app_id))?;
         notifier.Show(&toast)?;
         Ok(())
     }
