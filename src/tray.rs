@@ -32,8 +32,8 @@ mod windows_impl {
         NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW, Shell_NotifyIconW,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
-        AppendMenuW, CW_USEDEFAULT, CreatePopupMenu, CreateWindowExW, DefWindowProcW,
-        DestroyMenu, DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, MF_STRING, MSG,
+        AppendMenuW, CW_USEDEFAULT, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
+        DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, MF_STRING, MSG,
         PostQuitMessage, RegisterClassW, SetForegroundWindow, TPM_BOTTOMALIGN, TPM_LEFTALIGN,
         TrackPopupMenu, WM_APP, WM_COMMAND, WM_DESTROY, WM_RBUTTONUP, WNDCLASSW,
         WS_OVERLAPPEDWINDOW,
@@ -172,7 +172,16 @@ mod windows_impl {
         GetCursorPos(&mut pt).ok();
 
         SetForegroundWindow(hwnd).ok();
-        TrackPopupMenu(menu, TPM_LEFTALIGN | TPM_BOTTOMALIGN, pt.x, pt.y, 0, hwnd, None).ok();
+        TrackPopupMenu(
+            menu,
+            TPM_LEFTALIGN | TPM_BOTTOMALIGN,
+            pt.x,
+            pt.y,
+            0,
+            hwnd,
+            None,
+        )
+        .ok();
 
         // C3 fix: destroy menu to prevent handle leak
         DestroyMenu(menu).ok();

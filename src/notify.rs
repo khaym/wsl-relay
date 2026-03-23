@@ -112,7 +112,10 @@ pub fn register_aumid() -> anyhow::Result<()> {
 
         // C4 fix: include null terminator for REG_SZ
         let name = HSTRING::from("DisplayName");
-        let wide_with_null: Vec<u16> = "WSL Relay".encode_utf16().chain(std::iter::once(0)).collect();
+        let wide_with_null: Vec<u16> = "WSL Relay"
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
         let byte_slice = std::slice::from_raw_parts(
             wide_with_null.as_ptr() as *const u8,
             wide_with_null.len() * std::mem::size_of::<u16>(),

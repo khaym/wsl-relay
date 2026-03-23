@@ -1,6 +1,6 @@
 use std::sync::mpsc;
 use std::sync::{Arc, Barrier};
-use wsl_relay::tray::{StubTray, TrayBackend, TRAY_ICON_BYTES};
+use wsl_relay::tray::{StubTray, TRAY_ICON_BYTES, TrayBackend};
 
 #[test]
 fn stub_tray_does_not_send_quit_signal() {
