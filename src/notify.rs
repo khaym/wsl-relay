@@ -94,14 +94,12 @@ pub fn register_aumid() -> anyhow::Result<()> {
         "Software\\Classes\\AppUserModelId\\{}",
         WSLRELAY_AUMID
     ));
-    let display_name = HSTRING::from("WSL Relay");
-
     unsafe {
         let mut hkey = Default::default();
         RegCreateKeyExW(
             HKEY_CURRENT_USER,
             &subkey,
-            0,
+            None,
             None,
             Default::default(),
             KEY_WRITE,
@@ -120,11 +118,11 @@ pub fn register_aumid() -> anyhow::Result<()> {
             wide_with_null.as_ptr() as *const u8,
             wide_with_null.len() * std::mem::size_of::<u16>(),
         );
-        RegSetValueExW(hkey, &name, 0, REG_SZ, Some(byte_slice))?;
+        RegSetValueExW(hkey, &name, None, REG_SZ, Some(byte_slice));
 
         // S1 fix: close registry key handle
         use windows::Win32::System::Registry::RegCloseKey;
-        RegCloseKey(hkey)?;
+        RegCloseKey(hkey);
     }
 
     Ok(())

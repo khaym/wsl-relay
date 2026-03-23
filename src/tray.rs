@@ -177,7 +177,7 @@ mod windows_impl {
             TPM_LEFTALIGN | TPM_BOTTOMALIGN,
             pt.x,
             pt.y,
-            0,
+            None,
             hwnd,
             None,
         )
