@@ -1,4 +1,6 @@
-use wsl_relay::notify::{NotificationBackend, NotifyIcon, NotifyRequest, StubNotifier, escape_xml};
+use wsl_relay::notify::{
+    NotificationBackend, NotifyIcon, NotifyRequest, StubNotifier, WSLRELAY_AUMID, escape_xml,
+};
 
 #[test]
 fn stub_notifier_returns_ok() {
@@ -75,4 +77,18 @@ fn escape_xml_special_characters() {
 #[test]
 fn escape_xml_plain_text_unchanged() {
     assert_eq!(escape_xml("Hello World"), "Hello World");
+}
+
+#[test]
+fn aumid_is_not_empty() {
+    assert!(!WSLRELAY_AUMID.is_empty());
+}
+
+#[test]
+fn aumid_does_not_use_powershell() {
+    // W6 fix: case-insensitive check to catch "PowerShell", "POWERSHELL", etc.
+    assert!(
+        !WSLRELAY_AUMID.to_lowercase().contains("powershell"),
+        "AUMID should not reference PowerShell"
+    );
 }
