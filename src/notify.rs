@@ -106,7 +106,7 @@ pub fn register_aumid() -> anyhow::Result<()> {
             None,
             &mut hkey,
             None,
-        )?;
+        );
 
         // C4 fix: include null terminator for REG_SZ
         let name = HSTRING::from("DisplayName");
