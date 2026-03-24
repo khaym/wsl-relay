@@ -1,5 +1,7 @@
+use axum::body::Bytes;
 use axum::extract::State;
-use axum::http::StatusCode;
+use axum::http::{StatusCode, header};
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{Value, json};
@@ -52,4 +54,42 @@ async fn notify_handler(
         })?;
 
     Ok(Json(json!({"ok": true})))
+}
+
+pub fn clipboard_routes() -> Router<AppState> {
+    Router::new().route("/api/v1/clipboard/image", get(clipboard_image_handler))
+}
+
+async fn clipboard_image_handler(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, Json<Value>)> {
+    if !state.config.is_operation_enabled("clipboard") {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "clipboard operation is disabled"})),
+        ));
+    }
+
+    let clipboard = state.clipboard.clone();
+    let png_bytes = tokio::task::spawn_blocking(move || clipboard.read_image())
+        .await
+        .map_err(|e| {
+            tracing::error!("Clipboard task panicked: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "internal server error"})),
+            )
+        })?
+        .map_err(|e| {
+            tracing::error!("Clipboard read failed: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "clipboard read failed"})),
+            )
+        })?;
+
+    Ok((
+        [(header::CONTENT_TYPE, "image/png")],
+        Bytes::from(png_bytes),
+    ))
 }

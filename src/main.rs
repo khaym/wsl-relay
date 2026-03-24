@@ -41,6 +41,18 @@ fn create_notifier() -> Arc<dyn wsl_relay::notify::NotificationBackend> {
     }
 }
 
+fn create_clipboard() -> Arc<dyn wsl_relay::clipboard::ClipboardBackend> {
+    #[cfg(target_os = "windows")]
+    {
+        Arc::new(wsl_relay::clipboard::WindowsClipboard)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        tracing::warn!("Running on non-Windows platform, clipboard will return stub data");
+        Arc::new(wsl_relay::clipboard::StubClipboard)
+    }
+}
+
 fn create_tray() -> Box<dyn TrayBackend> {
     #[cfg(target_os = "windows")]
     {
@@ -70,6 +82,7 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState {
         notifier: create_notifier(),
+        clipboard: create_clipboard(),
         config: Arc::new(config),
     };
 
