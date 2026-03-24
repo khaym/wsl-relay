@@ -79,14 +79,14 @@ impl ClipboardBackend for WindowsClipboard {
         use std::slice;
 
         use anyhow::{Context, bail};
-        use windows::Win32::Foundation::{HANDLE, HWND};
+        use windows::Win32::Foundation::HGLOBAL;
         use windows::Win32::System::DataExchange::{
             CloseClipboard, GetClipboardData, OpenClipboard,
         };
         use windows::Win32::System::Memory::{GlobalLock, GlobalSize, GlobalUnlock};
 
         unsafe {
-            OpenClipboard(HWND::default()).context("Failed to open clipboard")?;
+            OpenClipboard(None).context("Failed to open clipboard")?;
 
             // CF_DIB = 8
             let result = (|| -> anyhow::Result<Vec<u8>> {
@@ -95,16 +95,16 @@ impl ClipboardBackend for WindowsClipboard {
                     bail!("No image data in clipboard (CF_DIB not available)");
                 }
                 let handle = handle.unwrap();
-                let hmem = HANDLE(handle.0);
+                let hmem = HGLOBAL(handle.0);
 
-                let ptr = GlobalLock(hmem.0 as *const _);
+                let ptr = GlobalLock(hmem);
                 if ptr.is_null() {
                     bail!("Failed to lock clipboard memory");
                 }
 
-                let size = GlobalSize(hmem.0 as *const _);
+                let size = GlobalSize(hmem);
                 if size == 0 {
-                    GlobalUnlock(hmem.0 as *const _);
+                    GlobalUnlock(hmem);
                     bail!("Clipboard memory block has zero size");
                 }
 
@@ -112,7 +112,7 @@ impl ClipboardBackend for WindowsClipboard {
                 // don't leak the GlobalLock
                 let data = slice::from_raw_parts(ptr as *const u8, size);
                 let dib_copy = data.to_vec();
-                GlobalUnlock(hmem.0 as *const _);
+                GlobalUnlock(hmem);
 
                 dib_to_png(&dib_copy)
             })();
