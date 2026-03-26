@@ -52,7 +52,7 @@ fn tray_icon_bytes_is_valid_ico() {
 }
 
 #[test]
-fn tray_icon_bytes_has_one_image() {
+fn tray_icon_bytes_has_expected_images() {
     let count = u16::from_le_bytes([TRAY_ICON_BYTES[4], TRAY_ICON_BYTES[5]]);
-    assert_eq!(count, 1, "ICO should contain exactly one image");
+    assert_eq!(count, 4, "ICO should contain 16, 32, 48, 256 images");
 }
