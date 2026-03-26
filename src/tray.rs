@@ -52,77 +52,79 @@ mod windows_impl {
     }
 
     unsafe fn run_tray_loop(quit_tx: SyncSender<()>) -> anyhow::Result<()> {
-        let hinstance = GetModuleHandleW(None)?;
-        let class_name = w!("WslRelayTrayClass");
+        unsafe {
+            let hinstance = GetModuleHandleW(None)?;
+            let class_name = w!("WslRelayTrayClass");
 
-        let wc = WNDCLASSW {
-            lpfnWndProc: Some(tray_wnd_proc),
-            hInstance: hinstance.into(),
-            lpszClassName: class_name,
-            ..Default::default()
-        };
+            let wc = WNDCLASSW {
+                lpfnWndProc: Some(tray_wnd_proc),
+                hInstance: hinstance.into(),
+                lpszClassName: class_name,
+                ..Default::default()
+            };
 
-        // C2 fix: handle RegisterClassW failure (allow ERROR_CLASS_ALREADY_EXISTS)
-        let atom = RegisterClassW(&wc);
-        if atom == 0 {
-            let err = windows::core::Error::from_win32();
-            // ERROR_CLASS_ALREADY_EXISTS = 1410
-            if err.code().0 as u32 != 0x80070582 {
-                return Err(anyhow::anyhow!("RegisterClassW failed: {}", err));
+            // C2 fix: handle RegisterClassW failure (allow ERROR_CLASS_ALREADY_EXISTS)
+            let atom = RegisterClassW(&wc);
+            if atom == 0 {
+                let err = windows::core::Error::from_win32();
+                // ERROR_CLASS_ALREADY_EXISTS = 1410
+                if err.code().0 as u32 != 0x80070582 {
+                    return Err(anyhow::anyhow!("RegisterClassW failed: {}", err));
+                }
             }
+
+            let hwnd = CreateWindowExW(
+                Default::default(),
+                class_name,
+                w!("WSL Relay Tray"),
+                WS_OVERLAPPEDWINDOW,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                CW_USEDEFAULT,
+                None,
+                None,
+                Some(hinstance.into()),
+                None,
+            )?;
+
+            let icon = load_embedded_icon();
+
+            let mut nid = NOTIFYICONDATAW {
+                cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
+                hWnd: hwnd,
+                uID: 1,
+                uFlags: NIF_ICON | NIF_MESSAGE | NIF_TIP,
+                uCallbackMessage: WM_TRAYICON,
+                hIcon: icon.unwrap_or_default(),
+                ..Default::default()
+            };
+
+            // Set tooltip
+            let tip = "WSL Relay";
+            let tip_wide: Vec<u16> = tip.encode_utf16().collect();
+            let len = tip_wide.len().min(nid.szTip.len() - 1);
+            nid.szTip[..len].copy_from_slice(&tip_wide[..len]);
+
+            // W2 fix: check Shell_NotifyIconW return value
+            if !Shell_NotifyIconW(NIM_ADD, &nid).as_bool() {
+                tracing::warn!("Shell_NotifyIconW(NIM_ADD) failed — tray icon may not be visible");
+            }
+
+            QUIT_TX.with(|cell| {
+                *cell.borrow_mut() = Some(quit_tx);
+            });
+
+            // Message loop
+            let mut msg = MSG::default();
+            while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                DispatchMessageW(&msg);
+            }
+
+            Shell_NotifyIconW(NIM_DELETE, &nid);
+
+            Ok(())
         }
-
-        let hwnd = CreateWindowExW(
-            Default::default(),
-            class_name,
-            w!("WSL Relay Tray"),
-            WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT,
-            CW_USEDEFAULT,
-            CW_USEDEFAULT,
-            CW_USEDEFAULT,
-            None,
-            None,
-            Some(hinstance.into()),
-            None,
-        )?;
-
-        let icon = load_embedded_icon();
-
-        let mut nid = NOTIFYICONDATAW {
-            cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
-            hWnd: hwnd,
-            uID: 1,
-            uFlags: NIF_ICON | NIF_MESSAGE | NIF_TIP,
-            uCallbackMessage: WM_TRAYICON,
-            hIcon: icon.unwrap_or_default(),
-            ..Default::default()
-        };
-
-        // Set tooltip
-        let tip = "WSL Relay";
-        let tip_wide: Vec<u16> = tip.encode_utf16().collect();
-        let len = tip_wide.len().min(nid.szTip.len() - 1);
-        nid.szTip[..len].copy_from_slice(&tip_wide[..len]);
-
-        // W2 fix: check Shell_NotifyIconW return value
-        if !Shell_NotifyIconW(NIM_ADD, &nid).as_bool() {
-            tracing::warn!("Shell_NotifyIconW(NIM_ADD) failed — tray icon may not be visible");
-        }
-
-        QUIT_TX.with(|cell| {
-            *cell.borrow_mut() = Some(quit_tx);
-        });
-
-        // Message loop
-        let mut msg = MSG::default();
-        while GetMessageW(&mut msg, None, 0, 0).as_bool() {
-            DispatchMessageW(&msg);
-        }
-
-        Shell_NotifyIconW(NIM_DELETE, &nid);
-
-        Ok(())
     }
 
     thread_local! {
@@ -135,56 +137,60 @@ mod windows_impl {
         wparam: WPARAM,
         lparam: LPARAM,
     ) -> LRESULT {
-        match msg {
-            WM_TRAYICON => {
-                let event = (lparam.0 & 0xFFFF) as u32;
-                // W3 fix: use named constant instead of magic number
-                if event == WM_RBUTTONUP {
-                    show_context_menu(hwnd);
+        unsafe {
+            match msg {
+                WM_TRAYICON => {
+                    let event = (lparam.0 & 0xFFFF) as u32;
+                    // W3 fix: use named constant instead of magic number
+                    if event == WM_RBUTTONUP {
+                        show_context_menu(hwnd);
+                    }
+                    LRESULT(0)
                 }
-                LRESULT(0)
-            }
-            WM_COMMAND => {
-                let id = (wparam.0 & 0xFFFF) as u16;
-                if id == IDM_QUIT {
-                    QUIT_TX.with(|cell| {
-                        if let Some(tx) = cell.borrow().as_ref() {
-                            let _ = tx.send(());
-                        }
-                    });
-                    DestroyWindow(hwnd).ok();
+                WM_COMMAND => {
+                    let id = (wparam.0 & 0xFFFF) as u16;
+                    if id == IDM_QUIT {
+                        QUIT_TX.with(|cell| {
+                            if let Some(tx) = cell.borrow().as_ref() {
+                                let _ = tx.send(());
+                            }
+                        });
+                        DestroyWindow(hwnd).ok();
+                    }
+                    LRESULT(0)
                 }
-                LRESULT(0)
+                WM_DESTROY => {
+                    PostQuitMessage(0);
+                    LRESULT(0)
+                }
+                _ => DefWindowProcW(hwnd, msg, wparam, lparam),
             }
-            WM_DESTROY => {
-                PostQuitMessage(0);
-                LRESULT(0)
-            }
-            _ => DefWindowProcW(hwnd, msg, wparam, lparam),
         }
     }
 
     unsafe fn show_context_menu(hwnd: HWND) {
-        let menu = CreatePopupMenu().expect("Failed to create popup menu");
-        AppendMenuW(menu, MF_STRING, IDM_QUIT as usize, w!("Quit")).ok();
+        unsafe {
+            let menu = CreatePopupMenu().expect("Failed to create popup menu");
+            AppendMenuW(menu, MF_STRING, IDM_QUIT as usize, w!("Quit")).ok();
 
-        let mut pt = Default::default();
-        GetCursorPos(&mut pt).ok();
+            let mut pt = Default::default();
+            GetCursorPos(&mut pt).ok();
 
-        SetForegroundWindow(hwnd).ok();
-        TrackPopupMenu(
-            menu,
-            TPM_LEFTALIGN | TPM_BOTTOMALIGN,
-            pt.x,
-            pt.y,
-            None,
-            hwnd,
-            None,
-        )
-        .ok();
+            SetForegroundWindow(hwnd).ok();
+            TrackPopupMenu(
+                menu,
+                TPM_LEFTALIGN | TPM_BOTTOMALIGN,
+                pt.x,
+                pt.y,
+                None,
+                hwnd,
+                None,
+            )
+            .ok();
 
-        // C3 fix: destroy menu to prevent handle leak
-        DestroyMenu(menu).ok();
+            // C3 fix: destroy menu to prevent handle leak
+            DestroyMenu(menu).ok();
+        }
     }
 
     unsafe fn load_embedded_icon() -> Option<windows::Win32::UI::WindowsAndMessaging::HICON> {
@@ -208,14 +214,16 @@ mod windows_impl {
 
         let bmp_data = &ico_data[image_offset..];
 
-        let icon = CreateIconFromResourceEx(
-            bmp_data,
-            true,       // fIcon
-            0x00030000, // version
-            16,
-            16,
-            LR_DEFAULTCOLOR,
-        );
+        let icon = unsafe {
+            CreateIconFromResourceEx(
+                bmp_data,
+                true,       // fIcon
+                0x00030000, // version
+                16,
+                16,
+                LR_DEFAULTCOLOR,
+            )
+        };
         icon.ok()
     }
 }

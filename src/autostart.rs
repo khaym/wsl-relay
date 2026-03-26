@@ -31,16 +31,15 @@ pub struct WindowsAutostart;
 #[cfg(target_os = "windows")]
 impl AutostartBackend for WindowsAutostart {
     fn enable(&self) -> anyhow::Result<()> {
-        use anyhow::Context;
         use windows::Win32::System::Registry::{
             HKEY_CURRENT_USER, KEY_WRITE, REG_SZ, RegCloseKey, RegCreateKeyExW, RegSetValueExW,
         };
         use windows::core::HSTRING;
 
-        let exe_path = std::env::current_exe().context("Failed to get current exe path")?;
+        let exe_path = std::env::current_exe()?;
         let exe_str = exe_path
             .to_str()
-            .context("Exe path contains invalid Unicode")?;
+            .ok_or_else(|| anyhow::anyhow!("Exe path contains invalid Unicode"))?;
         // Quote the path to handle spaces in Windows paths (e.g. "C:\Program Files\...")
         let exe_quoted = format!("\"{}\"", exe_str);
 
@@ -60,7 +59,8 @@ impl AutostartBackend for WindowsAutostart {
                 &mut hkey,
                 None,
             )
-            .context("Failed to open/create registry key")?;
+            .ok()
+            .map_err(|e| anyhow::anyhow!("Failed to open/create registry key: {e}"))?;
 
             let wide_with_null: Vec<u16> = exe_quoted
                 .encode_utf16()
@@ -72,7 +72,9 @@ impl AutostartBackend for WindowsAutostart {
             );
             let result = RegSetValueExW(hkey, &value_name, None, REG_SZ, Some(byte_slice));
             RegCloseKey(hkey);
-            result.context("Failed to set registry value")?;
+            result
+                .ok()
+                .map_err(|e| anyhow::anyhow!("Failed to set registry value: {e}"))?;
         }
 
         Ok(())
