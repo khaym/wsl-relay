@@ -93,3 +93,105 @@ async fn clipboard_image_handler(
         Bytes::from(png_bytes),
     ))
 }
+
+pub fn autostart_routes() -> Router<AppState> {
+    Router::new().route(
+        "/api/v1/autostart",
+        get(get_autostart_handler)
+            .put(put_autostart_handler)
+            .delete(delete_autostart_handler),
+    )
+}
+
+async fn get_autostart_handler(
+    State(state): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if !state.config.is_operation_enabled("autostart") {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "autostart operation is disabled"})),
+        ));
+    }
+
+    let autostart = state.autostart.clone();
+    let enabled = tokio::task::spawn_blocking(move || autostart.is_enabled())
+        .await
+        .map_err(|e| {
+            tracing::error!("Autostart task panicked: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "internal server error"})),
+            )
+        })?
+        .map_err(|e| {
+            tracing::error!("Autostart status check failed: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "autostart status check failed"})),
+            )
+        })?;
+
+    Ok(Json(json!({"enabled": enabled})))
+}
+
+async fn put_autostart_handler(
+    State(state): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if !state.config.is_operation_enabled("autostart") {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "autostart operation is disabled"})),
+        ));
+    }
+
+    let autostart = state.autostart.clone();
+    tokio::task::spawn_blocking(move || autostart.enable())
+        .await
+        .map_err(|e| {
+            tracing::error!("Autostart task panicked: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "internal server error"})),
+            )
+        })?
+        .map_err(|e| {
+            tracing::error!("Autostart enable failed: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "autostart enable failed"})),
+            )
+        })?;
+
+    Ok(Json(json!({"ok": true})))
+}
+
+async fn delete_autostart_handler(
+    State(state): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if !state.config.is_operation_enabled("autostart") {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error": "autostart operation is disabled"})),
+        ));
+    }
+
+    let autostart = state.autostart.clone();
+    tokio::task::spawn_blocking(move || autostart.disable())
+        .await
+        .map_err(|e| {
+            tracing::error!("Autostart task panicked: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "internal server error"})),
+            )
+        })?
+        .map_err(|e| {
+            tracing::error!("Autostart disable failed: {e}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "autostart disable failed"})),
+            )
+        })?;
+
+    Ok(Json(json!({"ok": true})))
+}

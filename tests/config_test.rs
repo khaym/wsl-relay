@@ -1,6 +1,12 @@
 use wsl_relay::config::AppConfig;
 
 #[test]
+fn default_enables_autostart() {
+    let config = AppConfig::default();
+    assert!(config.is_operation_enabled("autostart"));
+}
+
+#[test]
 fn default_port_is_9400() {
     let config = AppConfig::default();
     assert_eq!(config.port, 9400);
@@ -56,4 +62,64 @@ fn empty_operations_disables_everything() {
     let config = AppConfig::from_toml_str(toml).unwrap();
     assert!(!config.is_operation_enabled("health"));
     assert!(!config.is_operation_enabled("notify"));
+}
+
+#[test]
+fn apply_port_override_changes_port() {
+    let config = AppConfig::default().apply_port_override(Some("8888"));
+    assert_eq!(config.port, 8888);
+}
+
+#[test]
+fn apply_port_override_ignores_invalid_value() {
+    let config = AppConfig::default().apply_port_override(Some("abc"));
+    assert_eq!(config.port, 9400);
+}
+
+#[test]
+fn apply_port_override_noop_when_none() {
+    let config = AppConfig::default().apply_port_override(None);
+    assert_eq!(config.port, 9400);
+}
+
+#[test]
+fn apply_port_override_rejects_zero() {
+    let config = AppConfig::default().apply_port_override(Some("0"));
+    assert_eq!(config.port, 9400);
+}
+
+#[test]
+fn apply_port_override_empty_string_fallback() {
+    let config = AppConfig::default().apply_port_override(Some(""));
+    assert_eq!(config.port, 9400);
+}
+
+#[test]
+fn apply_port_override_max_u16() {
+    let config = AppConfig::default().apply_port_override(Some("65535"));
+    assert_eq!(config.port, 65535);
+}
+
+#[test]
+fn apply_port_override_overflow_fallback() {
+    let config = AppConfig::default().apply_port_override(Some("65536"));
+    assert_eq!(config.port, 9400);
+}
+
+#[test]
+fn default_config_path_returns_appdata_based_path() {
+    let path = AppConfig::default_config_path();
+    // On non-Windows (APPDATA not set), returns None
+    // On Windows, returns Some(%APPDATA%\wsl-relay\config.toml)
+    match std::env::var("APPDATA") {
+        Ok(appdata) => {
+            let expected = std::path::PathBuf::from(appdata)
+                .join("wsl-relay")
+                .join("config.toml");
+            assert_eq!(path, Some(expected));
+        }
+        Err(_) => {
+            assert_eq!(path, None);
+        }
+    }
 }

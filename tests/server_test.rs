@@ -5,6 +5,7 @@ use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
+use wsl_relay::autostart::StubAutostart;
 use wsl_relay::clipboard::{ClipboardBackend, StubClipboard};
 use wsl_relay::config::AppConfig;
 use wsl_relay::notify::{NotificationBackend, NotifyRequest, StubNotifier};
@@ -14,6 +15,7 @@ fn test_state() -> AppState {
     AppState {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
+        autostart: Arc::new(StubAutostart),
         config: Arc::new(AppConfig::default()),
     }
 }
@@ -99,6 +101,7 @@ async fn notify_returns_403_when_disabled() {
     let state = AppState {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
+        autostart: Arc::new(StubAutostart),
         config: Arc::new(AppConfig::from_toml_str(r#"enabled_operations = ["health"]"#).unwrap()),
     };
     let app = build_router(state);
@@ -198,6 +201,7 @@ async fn notify_returns_500_when_notifier_fails() {
     let state = AppState {
         notifier: Arc::new(FailingNotifier),
         clipboard: Arc::new(StubClipboard),
+        autostart: Arc::new(StubAutostart),
         config: Arc::new(AppConfig::default()),
     };
     let app = build_router(state);
@@ -263,6 +267,7 @@ async fn clipboard_image_returns_403_when_disabled() {
     let state = AppState {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
+        autostart: Arc::new(StubAutostart),
         config: Arc::new(AppConfig::from_toml_str(r#"enabled_operations = ["health"]"#).unwrap()),
     };
     let app = build_router(state);
@@ -285,6 +290,7 @@ async fn clipboard_image_returns_500_when_backend_fails() {
     let state = AppState {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(FailingClipboard),
+        autostart: Arc::new(StubAutostart),
         config: Arc::new(AppConfig::default()),
     };
     let app = build_router(state);
