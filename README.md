@@ -163,6 +163,15 @@ Disabled endpoints return `403 Forbidden`.
 - **No shell access** — Unlike PowerShell passthrough, WSL Relay exposes only specific, scoped operations
 - **Operation-level control** — Each API can be individually disabled via config
 
+## Claude Code Plugin
+
+The [wsl-notify](https://github.com/khaym/Claude-Code-Plugins) plugin integrates WSL Relay with Claude Code — auto-notifies on task completion / permission prompts, and captures clipboard images directly into conversations.
+
+```
+/plugin marketplace add khaym/Claude-Code-Plugins
+/plugin install wsl-notify@khaym-claude-plugins
+```
+
 ## Building from Source
 
 Requirements: Rust toolchain with `x86_64-pc-windows-msvc` target.
