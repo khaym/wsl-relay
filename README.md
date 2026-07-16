@@ -41,6 +41,7 @@ WSL Relay is a tiny Windows-native tray app that exposes a localhost REST API fo
 
 - **Toast Notifications** — Get notified when Claude Code completes a task, CI finishes, or tests fail — right on your Windows desktop
 - **Clipboard Image** — Grab Windows screenshots directly from your container. No more "save file, copy to mount" dance
+- **Sleep Inhibit** — Keep Windows awake while a long build or download runs in your container. Auto-releases via TTL, so a crashed client never leaves your machine sleepless
 - **Secure by Design** — No PowerShell interop needed. Your sandbox stays intact
 - **Lightweight** — Rust-built single binary (~1.5 MB). Runs silently in the system tray with minimal resource footprint
 - **System Tray + Auto-start** — Stays resident in the tray. Optionally launches at Windows login
@@ -68,6 +69,11 @@ curl -X POST http://host.docker.internal:9400/api/v1/notify \
 
 # Read clipboard image (returns PNG)
 curl http://host.docker.internal:9400/api/v1/clipboard/image -o screenshot.png
+
+# Keep Windows awake for 30 minutes (e.g. during a long build)
+curl -X POST http://host.docker.internal:9400/api/v1/power/inhibit \
+  -H "Content-Type: application/json" \
+  -d '{"ttl_seconds":1800}'
 
 # Enable auto-start
 curl -X PUT http://host.docker.internal:9400/api/v1/autostart
@@ -108,6 +114,25 @@ Request body:
 
 Returns `image/png` binary on success, `500` if no image is in the clipboard.
 
+### Power (Sleep Inhibit)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/power/inhibit` | Keep Windows awake → `{"ok":true,"ttl_seconds":600}` |
+| `GET` | `/power/inhibit` | Check status → `{"active":true\|false,"remaining_seconds":570\|null}` |
+| `DELETE` | `/power/inhibit` | Release immediately → `{"ok":true}` |
+
+Request body (optional — an empty body uses defaults):
+```json
+{
+  "ttl_seconds": 1800
+}
+```
+
+`ttl_seconds` defaults to 600 and is capped at 3600; the response reports the effective TTL after capping. Posting again renews the timer, so a long-running client can keep extending in heartbeats. When the TTL expires (or on `DELETE`), normal sleep policy resumes.
+
+The inhibit prevents system sleep only (`PowerRequestSystemRequired`) — the display may still turn off. It is a single global slot shared by all clients: a renewal extends it for everyone, and a `DELETE` releases it for everyone.
+
 ### Auto-start
 
 | Method | Path | Description |
@@ -120,6 +145,7 @@ Returns `image/png` binary on success, `500` if no image is in the clipboard.
 
 | Status | Meaning |
 |--------|---------|
+| `400` | Invalid request body (e.g. `ttl_seconds: 0`) |
 | `403` | Operation disabled in config |
 | `500` | Backend operation failed |
 
@@ -133,7 +159,7 @@ Create `%APPDATA%\wsl-relay\config.toml`:
 
 ```toml
 port = 9400
-enabled_operations = ["health", "notify", "clipboard", "screenshot", "autostart"]
+enabled_operations = ["health", "notify", "clipboard", "screenshot", "autostart", "power"]
 ```
 
 Both fields are optional — omitted fields use defaults shown above.
