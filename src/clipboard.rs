@@ -183,6 +183,9 @@ pub fn dib_to_png(dib: &[u8]) -> anyhow::Result<Vec<u8>> {
         let mut encoder = png::Encoder::new(&mut png_buf, width, height_abs);
         encoder.set_color(color_type);
         encoder.set_depth(png::BitDepth::Eight);
+        // Pin fast compression: consumers are localhost WSL clients where
+        // latency matters more than PNG size (png 0.18 default is ~30x slower).
+        encoder.set_compression(png::Compression::Fast);
         let mut writer = encoder.write_header()?;
 
         let mut img_data = Vec::with_capacity((width * height_abs * channels) as usize);

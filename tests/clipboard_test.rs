@@ -45,7 +45,7 @@ fn make_dib(width: i32, height: i32, bit_count: u16, pixels: &[u8]) -> Vec<u8> {
 fn decode_png(data: &[u8]) -> (u32, u32, png::ColorType, Vec<u8>) {
     let decoder = png::Decoder::new(Cursor::new(data));
     let mut reader = decoder.read_info().expect("decode PNG header");
-    let mut buf = vec![0u8; reader.output_buffer_size()];
+    let mut buf = vec![0u8; reader.output_buffer_size().expect("output buffer size")];
     let info = reader.next_frame(&mut buf).expect("decode PNG frame");
     buf.truncate(info.buffer_size());
     (info.width, info.height, info.color_type, buf)

@@ -26,7 +26,7 @@ impl TrayBackend for StubTray {
 mod windows_impl {
     use super::*;
     use std::sync::mpsc::SyncSender;
-    use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+    use windows::Win32::Foundation::{ERROR_CLASS_ALREADY_EXISTS, HWND, LPARAM, LRESULT, WPARAM};
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::UI::Shell::{
         NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW, Shell_NotifyIconW,
@@ -66,9 +66,8 @@ mod windows_impl {
             // C2 fix: handle RegisterClassW failure (allow ERROR_CLASS_ALREADY_EXISTS)
             let atom = RegisterClassW(&wc);
             if atom == 0 {
-                let err = windows::core::Error::from_win32();
-                // ERROR_CLASS_ALREADY_EXISTS = 1410
-                if err.code().0 as u32 != 0x80070582 {
+                let err = windows::core::Error::from_thread();
+                if err.code() != ERROR_CLASS_ALREADY_EXISTS.to_hresult() {
                     return Err(anyhow::anyhow!("RegisterClassW failed: {}", err));
                 }
             }
