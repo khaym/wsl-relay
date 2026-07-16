@@ -9,6 +9,7 @@ use wsl_relay::autostart::StubAutostart;
 use wsl_relay::clipboard::{ClipboardBackend, StubClipboard};
 use wsl_relay::config::AppConfig;
 use wsl_relay::notify::{NotificationBackend, NotifyRequest, StubNotifier};
+use wsl_relay::power::{PowerInhibitManager, StubPowerBackend};
 use wsl_relay::server::{AppState, build_router};
 
 fn test_state() -> AppState {
@@ -16,6 +17,7 @@ fn test_state() -> AppState {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::default()),
     }
 }
@@ -102,6 +104,7 @@ async fn notify_returns_403_when_disabled() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::from_toml_str(r#"enabled_operations = ["health"]"#).unwrap()),
     };
     let app = build_router(state);
@@ -202,6 +205,7 @@ async fn notify_returns_500_when_notifier_fails() {
         notifier: Arc::new(FailingNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::default()),
     };
     let app = build_router(state);
@@ -268,6 +272,7 @@ async fn clipboard_image_returns_403_when_disabled() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::from_toml_str(r#"enabled_operations = ["health"]"#).unwrap()),
     };
     let app = build_router(state);
@@ -291,6 +296,7 @@ async fn clipboard_image_returns_500_when_backend_fails() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(FailingClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::default()),
     };
     let app = build_router(state);

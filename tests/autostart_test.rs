@@ -9,6 +9,7 @@ use wsl_relay::autostart::{AutostartBackend, StubAutostart};
 use wsl_relay::clipboard::StubClipboard;
 use wsl_relay::config::AppConfig;
 use wsl_relay::notify::StubNotifier;
+use wsl_relay::power::{PowerInhibitManager, StubPowerBackend};
 use wsl_relay::server::{AppState, build_router};
 
 fn test_state() -> AppState {
@@ -16,6 +17,7 @@ fn test_state() -> AppState {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::default()),
     }
 }
@@ -129,6 +131,7 @@ async fn get_autostart_returns_403_when_disabled() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::from_toml_str(r#"enabled_operations = ["health"]"#).unwrap()),
     };
     let app = build_router(state);
@@ -152,6 +155,7 @@ async fn put_autostart_returns_403_when_disabled() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::from_toml_str(r#"enabled_operations = ["health"]"#).unwrap()),
     };
     let app = build_router(state);
@@ -176,6 +180,7 @@ async fn delete_autostart_returns_403_when_disabled() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(StubAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::from_toml_str(r#"enabled_operations = ["health"]"#).unwrap()),
     };
     let app = build_router(state);
@@ -200,6 +205,7 @@ async fn put_autostart_returns_500_when_backend_fails() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(FailingAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::default()),
     };
     let app = build_router(state);
@@ -228,6 +234,7 @@ async fn get_autostart_returns_500_when_backend_fails() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(FailingAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::default()),
     };
     let app = build_router(state);
@@ -255,6 +262,7 @@ async fn delete_autostart_returns_500_when_backend_fails() {
         notifier: Arc::new(StubNotifier),
         clipboard: Arc::new(StubClipboard),
         autostart: Arc::new(FailingAutostart),
+        power: PowerInhibitManager::new(Arc::new(StubPowerBackend)),
         config: Arc::new(AppConfig::default()),
     };
     let app = build_router(state);

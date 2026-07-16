@@ -1,3 +1,7 @@
+mod power;
+
+pub use power::power_routes;
+
 use axum::body::Bytes;
 use axum::extract::State;
 use axum::http::{StatusCode, header};

@@ -22,6 +22,7 @@ fn default_operations() -> HashSet<String> {
         "clipboard".to_string(),
         "screenshot".to_string(),
         "autostart".to_string(),
+        "power".to_string(),
     ]
     .into()
 }

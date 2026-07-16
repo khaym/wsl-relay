@@ -19,6 +19,7 @@ fn default_enables_all_operations() {
     assert!(config.is_operation_enabled("notify"));
     assert!(config.is_operation_enabled("clipboard"));
     assert!(config.is_operation_enabled("screenshot"));
+    assert!(config.is_operation_enabled("power"));
 }
 
 #[test]

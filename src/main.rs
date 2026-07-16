@@ -77,6 +77,18 @@ fn create_autostart() -> Arc<dyn wsl_relay::autostart::AutostartBackend> {
     }
 }
 
+fn create_power_manager() -> Arc<wsl_relay::power::PowerInhibitManager> {
+    #[cfg(target_os = "windows")]
+    {
+        wsl_relay::power::PowerInhibitManager::new(Arc::new(wsl_relay::power::WindowsPowerBackend))
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        tracing::warn!("Running on non-Windows platform, power inhibit will be a no-op");
+        wsl_relay::power::PowerInhibitManager::new(Arc::new(wsl_relay::power::StubPowerBackend))
+    }
+}
+
 fn create_tray() -> Box<dyn TrayBackend> {
     #[cfg(target_os = "windows")]
     {
@@ -108,6 +120,7 @@ async fn main() -> anyhow::Result<()> {
         notifier: create_notifier(),
         clipboard: create_clipboard(),
         autostart: create_autostart(),
+        power: create_power_manager(),
         config: Arc::new(config),
     };
 
